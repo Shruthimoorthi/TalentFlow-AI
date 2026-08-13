@@ -1,0 +1,28 @@
+# Node.js
+node_modules/
+dist/
+
+# React environment files
+.env
+.env.*
+
+# Java / Spring Boot
+target/
+*.class
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
