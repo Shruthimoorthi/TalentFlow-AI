@@ -5,6 +5,7 @@ dist/
 # React environment files
 .env
 .env.*
+!.env.example
 
 # Java / Spring Boot
 target/
@@ -26,3 +27,4 @@ venv/
 # OS
 .DS_Store
 Thumbs.db
+
