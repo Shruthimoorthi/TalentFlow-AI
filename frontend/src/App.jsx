@@ -1,9 +1,15 @@
+import Navbar from './components/Navbar'
+import Hero from './components/Hero'
+import Features from './components/Features'
+import Footer from './components/Footer'
+
 function App() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <h1 className="text-4xl font-bold text-blue-600">
-        TalentFlow ATS
-      </h1>
+    <div className="min-h-screen bg-slate-950 text-white">
+      <Navbar />
+      <Hero />
+      <Features />
+      <Footer />
     </div>
   )
 }
