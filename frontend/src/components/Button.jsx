@@ -1,4 +1,10 @@
-function Button({ children, variant = 'primary' }) {
+function Button({
+  children,
+  variant = 'primary',
+  type = 'button',
+  className = '',
+  ...props
+}) {
   const baseStyles =
     'rounded-lg px-5 py-2.5 text-sm font-medium transition'
 
@@ -10,7 +16,11 @@ function Button({ children, variant = 'primary' }) {
   }
 
   return (
-    <button className={`${baseStyles} ${variants[variant]}`}>
+    <button
+      type={type}
+      className={`${baseStyles} ${variants[variant]} ${className}`}
+      {...props}
+    >
       {children}
     </button>
   )
