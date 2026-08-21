@@ -267,6 +267,52 @@ export async function uploadResumeFile(
 
   return data
 }
+// ==================== INTERVIEWS ====================
+
+export async function createInterview(interview) {
+  return request('/interviews', {
+    method: 'POST',
+    body: JSON.stringify(interview),
+  })
+}
+
+export async function getInterviews() {
+  return request('/interviews')
+}
+
+export async function getInterviewById(interviewId) {
+  return request(`/interviews/${interviewId}`)
+}
+
+export async function getInterviewsByCandidate(candidateId) {
+  return request(`/interviews/candidate/${candidateId}`)
+}
+
+export async function getInterviewsByRecruiter(recruiterId) {
+  return request(`/interviews/recruiter/${recruiterId}`)
+}
+
+export async function getInterviewsByApplication(applicationId) {
+  return request(`/interviews/application/${applicationId}`)
+}
+
+export async function updateInterview(interviewId, interview) {
+  return request(`/interviews/${interviewId}`, {
+    method: 'PUT',
+    body: JSON.stringify(interview),
+  })
+}
+
+export async function deleteInterview(interviewId) {
+  return request(`/interviews/${interviewId}`, {
+    method: 'DELETE',
+  })
+}
+// ==================== INTERVIEWS ====================
+
+
+
+
 // ==================== LOGOUT ====================
 
 export function logout() {
