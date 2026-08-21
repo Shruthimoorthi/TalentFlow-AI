@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import Button from '../components/Button'
-
+import InterviewManagement from '../components/interviews/InterviewManagement'
 import {
   getJobs,
   getJobApplications,
@@ -11,6 +11,12 @@ import {
   updateJob,
   deleteJob,
   updateApplicationStatus,
+
+  createInterview,
+  getInterviewsByRecruiter,
+  updateInterview,
+  deleteInterview,
+
   logout,
 } from '../services/api'
 
@@ -44,6 +50,24 @@ function RecruiterDashboard() {
   const [creatingJob, setCreatingJob] = useState(false)
   const [processingApplication, setProcessingApplication] =
     useState(null)
+  // ==================== INTERVIEW STATE ====================
+
+const [interviews, setInterviews] = useState([])
+
+const [selectedApplication, setSelectedApplication] = useState(null)
+
+const [interviewDate, setInterviewDate] = useState('')
+const [meetingLink, setMeetingLink] = useState('')
+
+const [creatingInterview, setCreatingInterview] = useState(false)
+const [processingInterview, setProcessingInterview] = useState(null)
+
+const [editingInterviewId, setEditingInterviewId] = useState(null)
+const [editInterviewDate, setEditInterviewDate] = useState('')
+const [editMeetingLink, setEditMeetingLink] = useState('')
+const [editInterviewStatus, setEditInterviewStatus] = useState('SCHEDULED')
+const [editInterviewNotes, setEditInterviewNotes] = useState('')
+const [savingInterview, setSavingInterview] = useState(false)
 
   // ==================== LOAD DASHBOARD ====================
 
@@ -62,14 +86,21 @@ function RecruiterDashboard() {
 
       const allApplications = []
 
-      for (const job of ownJobs) {
-        const jobApplications =
-          await getJobApplications(job.id)
+for (const job of ownJobs) {
+  const jobApplications =
+    await getJobApplications(job.id)
 
-        allApplications.push(...jobApplications)
-      }
+  allApplications.push(...jobApplications)
+}
 
-      setApplications(allApplications)
+setApplications(allApplications)
+
+// ==================== LOAD INTERVIEWS ====================
+
+const interviewData =
+  await getInterviewsByRecruiter(recruiterId)
+
+setInterviews(interviewData)
     } catch (error) {
       setError(error.message)
     } finally {
@@ -115,7 +146,114 @@ function RecruiterDashboard() {
       setCreatingJob(false)
     }
   }
+ // ==================== CREATE INTERVIEW ====================
 
+const handleCreateInterview = async (event) => {
+  event.preventDefault()
+
+  if (!selectedApplication) {
+    setError('Please select a candidate application.')
+    return
+  }
+
+  try {
+    setCreatingInterview(true)
+    setError('')
+
+    await createInterview({
+      applicationId: selectedApplication.id,
+      recruiterId,
+      candidateId: selectedApplication.candidateId,
+      scheduledAt: interviewDate,
+      meetingLink,
+    })
+
+    setSelectedApplication(null)
+    setInterviewDate('')
+    setMeetingLink('')
+
+    await loadDashboard()
+  } catch (error) {
+    setError(error.message)
+  } finally {
+    setCreatingInterview(false)
+  }
+}
+// ==================== EDIT INTERVIEW ====================
+
+const handleEditInterview = (interview) => {
+  setEditingInterviewId(interview.id)
+
+  setEditInterviewDate(interview.scheduledAt || '')
+  setEditMeetingLink(interview.meetingLink || '')
+  setEditInterviewStatus(interview.status || 'SCHEDULED')
+  setEditInterviewNotes(interview.notes || '')
+}
+
+const handleCancelInterviewEdit = () => {
+  setEditingInterviewId(null)
+
+  setEditInterviewDate('')
+  setEditMeetingLink('')
+  setEditInterviewStatus('SCHEDULED')
+  setEditInterviewNotes('')
+}
+
+const handleUpdateInterview = async (event) => {
+  event.preventDefault()
+
+  try {
+    setSavingInterview(true)
+    setError('')
+
+    const currentInterview = interviews.find(
+      (interview) => interview.id === editingInterviewId
+    )
+
+    await updateInterview(editingInterviewId, {
+      applicationId: currentInterview.applicationId,
+      recruiterId: currentInterview.recruiterId,
+      candidateId: currentInterview.candidateId,
+      scheduledAt: editInterviewDate,
+      meetingLink: editMeetingLink,
+      status: editInterviewStatus,
+      notes: editInterviewNotes,
+    })
+
+    handleCancelInterviewEdit()
+
+    await loadDashboard()
+  } catch (error) {
+    setError(error.message)
+  } finally {
+    setSavingInterview(false)
+  }
+}
+
+// ==================== DELETE INTERVIEW ====================
+
+const handleDeleteInterview = async (interview) => {
+  if (
+    !window.confirm(
+      'Are you sure you want to cancel this interview?'
+    )
+  ) {
+    return
+  }
+
+  try {
+    setProcessingInterview(interview.id)
+    setError('')
+
+    await deleteInterview(interview.id)
+
+    await loadDashboard()
+  } catch (error) {
+    setError(error.message)
+  } finally {
+    setProcessingInterview(null)
+  }
+}
   // ==================== START EDIT ====================
 
   const handleEditClick = (job) => {
@@ -786,7 +924,473 @@ function RecruiterDashboard() {
           </div>
 
         </section>
+{/* ==================== SCHEDULE INTERVIEW ==================== */}
 
+<section className="mt-12">
+
+  <div>
+    <p className="text-sm font-medium text-blue-400">
+      Interview Management
+    </p>
+
+    <h2 className="mt-1 text-2xl font-bold">
+      Schedule an Interview
+    </h2>
+
+    <p className="mt-1 text-sm text-slate-400">
+      Schedule interviews with shortlisted candidates.
+    </p>
+  </div>
+
+  <form
+    onSubmit={handleCreateInterview}
+    className="mt-6 rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-lg"
+  >
+
+    {/* Candidate/Application */}
+
+    <div>
+      <label className="mb-2 block text-sm font-medium text-slate-300">
+        Candidate Application
+      </label>
+
+      <select
+        value={selectedApplication?.id || ''}
+        onChange={(e) => {
+          const application = applications.find(
+            (item) => item.id === e.target.value
+          )
+
+          setSelectedApplication(application || null)
+        }}
+        required
+        className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+      >
+
+        <option value="">
+          Select a candidate
+        </option>
+
+        {applications
+          .filter(
+            (application) =>
+              application.status === 'SHORTLISTED'
+          )
+          .map((application) => (
+            <option
+              key={application.id}
+              value={application.id}
+            >
+              Candidate: {application.candidateId}
+            </option>
+          ))}
+
+      </select>
+    </div>
+
+    {/* Date & Time */}
+
+    <div className="mt-5">
+
+      <label className="mb-2 block text-sm font-medium text-slate-300">
+        Interview Date & Time
+      </label>
+
+      <input
+        type="datetime-local"
+        value={interviewDate}
+        onChange={(e) =>
+          setInterviewDate(e.target.value)
+        }
+        required
+        className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+      />
+
+    </div>
+
+    {/* Meeting Link */}
+
+    <div className="mt-5">
+
+      <label className="mb-2 block text-sm font-medium text-slate-300">
+        Meeting Link
+      </label>
+
+      <input
+        type="url"
+        placeholder="https://meet.google.com/..."
+        value={meetingLink}
+        onChange={(e) =>
+          setMeetingLink(e.target.value)
+        }
+        className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none placeholder:text-slate-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+      />
+
+    </div>
+
+    {/* Submit */}
+
+    <div className="mt-6">
+
+      <Button
+        type="submit"
+        disabled={creatingInterview}
+      >
+        {creatingInterview
+          ? 'Scheduling...'
+          : '+ Schedule Interview'}
+      </Button>
+
+    </div>
+
+  </form>
+
+</section>
+{/* ==================== SCHEDULED INTERVIEWS ==================== */}
+
+<section className="mt-12">
+
+  <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+
+    <div>
+      <p className="text-sm font-medium text-blue-400">
+        Interview Management
+      </p>
+
+      <h2 className="mt-1 text-2xl font-bold">
+        Scheduled Interviews
+      </h2>
+
+      <p className="mt-1 text-sm text-slate-400">
+        View and manage your upcoming candidate interviews.
+      </p>
+    </div>
+
+    <button
+      onClick={loadDashboard}
+      className="text-sm font-medium text-slate-400 transition hover:text-white"
+    >
+      ↻ Refresh
+    </button>
+
+  </div>
+
+  <div className="mt-6">
+
+    {interviews.length === 0 ? (
+
+      <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-900/50 p-10 text-center">
+
+        <div className="text-4xl">
+          📅
+        </div>
+
+        <h3 className="mt-4 font-semibold">
+          No interviews scheduled
+        </h3>
+
+        <p className="mt-2 text-sm text-slate-400">
+          Scheduled interviews will appear here.
+        </p>
+
+      </div>
+
+    ) : (
+
+      <div className="grid gap-5">
+
+        {interviews.map((interview) => {
+
+          const isEditing =
+            editingInterviewId === interview.id
+
+          const isProcessing =
+            processingInterview === interview.id
+
+          return (
+
+            <div
+              key={interview.id}
+              className="rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-lg"
+            >
+
+              {isEditing ? (
+
+                /* ==================== EDIT INTERVIEW ==================== */
+
+                <form onSubmit={handleUpdateInterview}>
+
+                  <div>
+
+                    <p className="text-sm font-medium text-blue-400">
+                      Interview Management
+                    </p>
+
+                    <h3 className="mt-1 text-xl font-semibold">
+                      Edit Interview
+                    </h3>
+
+                  </div>
+
+                  <div className="mt-6">
+
+                    <label className="mb-2 block text-sm font-medium text-slate-300">
+                      Interview Date & Time
+                    </label>
+
+                    <input
+                      type="datetime-local"
+                      value={editInterviewDate}
+                      onChange={(e) =>
+                        setEditInterviewDate(
+                          e.target.value
+                        )
+                      }
+                      required
+                      className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    />
+
+                  </div>
+
+                  <div className="mt-5">
+
+                    <label className="mb-2 block text-sm font-medium text-slate-300">
+                      Meeting Link
+                    </label>
+
+                    <input
+                      type="url"
+                      value={editMeetingLink}
+                      onChange={(e) =>
+                        setEditMeetingLink(
+                          e.target.value
+                        )
+                      }
+                      placeholder="https://meet.google.com/..."
+                      className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none placeholder:text-slate-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    />
+
+                  </div>
+
+                  <div className="mt-5">
+
+                    <label className="mb-2 block text-sm font-medium text-slate-300">
+                      Status
+                    </label>
+
+                    <select
+                      value={editInterviewStatus}
+                      onChange={(e) =>
+                        setEditInterviewStatus(
+                          e.target.value
+                        )
+                      }
+                      className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 sm:w-64"
+                    >
+
+                      <option value="SCHEDULED">
+                        Scheduled
+                      </option>
+
+                      <option value="COMPLETED">
+                        Completed
+                      </option>
+
+                      <option value="CANCELLED">
+                        Cancelled
+                      </option>
+
+                    </select>
+
+                  </div>
+
+                  <div className="mt-5">
+
+                    <label className="mb-2 block text-sm font-medium text-slate-300">
+                      Notes
+                    </label>
+
+                    <textarea
+                      value={editInterviewNotes}
+                      onChange={(e) =>
+                        setEditInterviewNotes(
+                          e.target.value
+                        )
+                      }
+                      placeholder="Interview notes..."
+                      rows="4"
+                      className="w-full resize-none rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none placeholder:text-slate-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    />
+
+                  </div>
+
+                  <div className="mt-6 flex flex-wrap gap-3">
+
+                    <Button
+                      type="submit"
+                      disabled={savingInterview}
+                    >
+                      {savingInterview
+                        ? 'Saving...'
+                        : 'Save Changes'}
+                    </Button>
+
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={
+                        handleCancelInterviewEdit
+                      }
+                    >
+                      Cancel
+                    </Button>
+
+                  </div>
+
+                </form>
+
+              ) : (
+
+                /* ==================== NORMAL INTERVIEW VIEW ==================== */
+
+                <>
+
+                  <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+
+                    <div className="flex gap-4">
+
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-xl">
+                        📅
+                      </div>
+
+                      <div>
+
+                        <div className="flex flex-wrap items-center gap-3">
+
+                          <h3 className="text-xl font-semibold">
+                            Interview
+                          </h3>
+
+                          <span
+                            className={`rounded-full border px-3 py-1 text-xs font-medium ${
+                              interview.status ===
+                              'SCHEDULED'
+                                ? 'border-blue-500/20 bg-blue-500/10 text-blue-400'
+                                : interview.status ===
+                                  'COMPLETED'
+                                  ? 'border-green-500/20 bg-green-500/10 text-green-400'
+                                  : 'border-red-500/20 bg-red-500/10 text-red-400'
+                            }`}
+                          >
+                            {interview.status}
+                          </span>
+
+                        </div>
+
+                        <div className="mt-4 space-y-2 text-sm">
+
+                          <p className="text-slate-300">
+                            👤 Candidate ID:{' '}
+                            <span className="text-slate-400">
+                              {interview.candidateId}
+                            </span>
+                          </p>
+
+                          <p className="text-slate-300">
+                            📋 Application ID:{' '}
+                            <span className="text-slate-400">
+                              {interview.applicationId}
+                            </span>
+                          </p>
+
+                          <p className="text-slate-300">
+                            🕐 Scheduled At:{' '}
+                            <span className="text-slate-400">
+                              {new Date(
+                                interview.scheduledAt
+                              ).toLocaleString()}
+                            </span>
+                          </p>
+
+                          {interview.meetingLink && (
+                            <p>
+                              🔗{' '}
+                              <a
+                                href={
+                                  interview.meetingLink
+                                }
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-blue-400 hover:text-blue-300"
+                              >
+                                Join Meeting
+                              </a>
+                            </p>
+                          )}
+
+                          {interview.notes && (
+                            <p className="text-slate-300">
+                              📝 Notes:{' '}
+                              <span className="text-slate-400">
+                                {interview.notes}
+                              </span>
+                            </p>
+                          )}
+
+                        </div>
+
+                      </div>
+
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+
+                      <Button
+                        variant="secondary"
+                        onClick={() =>
+                          handleEditInterview(
+                            interview
+                          )
+                        }
+                        disabled={isProcessing}
+                      >
+                        Edit
+                      </Button>
+
+                      <Button
+                        variant="secondary"
+                        onClick={() =>
+                          handleDeleteInterview(
+                            interview
+                          )
+                        }
+                        disabled={isProcessing}
+                      >
+                        {isProcessing
+                          ? 'Cancelling...'
+                          : 'Cancel Interview'}
+                      </Button>
+
+                    </div>
+
+                  </div>
+
+                </>
+
+              )}
+
+            </div>
+
+          )
+        })}
+
+      </div>
+
+    )}
+
+  </div>
+
+</section>
         {/* ================= APPLICATIONS ================= */}
 
         <section className="mt-12">
@@ -937,6 +1541,10 @@ function RecruiterDashboard() {
 
         </section>
 
+<InterviewManagement
+  recruiterId={recruiterId}
+  applications={applications}
+/>
         {/* ================= FOOTER ================= */}
 
         <footer className="mt-16 border-t border-slate-800 pt-6 text-center text-sm text-slate-500">
