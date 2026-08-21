@@ -11,6 +11,7 @@ import {
   updateResume,
   deleteResume,
   uploadResumeFile,
+  getInterviewsByCandidate,
   logout,
 } from '../services/api'
 
@@ -26,7 +27,7 @@ function CandidateDashboard() {
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-
+  
   const [search, setSearch] = useState('')
 
   // ==================== RESUME STATE ====================
@@ -46,7 +47,9 @@ function CandidateDashboard() {
   // ==================== APPLICATION STATE ====================
 
   const [applyingJobId, setApplyingJobId] = useState(null)
+  // ==================== INTERVIEW STATE ====================
 
+  const [interviews, setInterviews] = useState([])
   // ==================== LOAD DASHBOARD ====================
 
   const loadDashboard = async () => {
@@ -61,17 +64,20 @@ function CandidateDashboard() {
 
       const resumesData =
         await getResumesByCandidate(userId)
-
+      
+      const interviewsData =
+      await getInterviewsByCandidate(userId)
       setJobs(jobsData || [])
       setApplications(applicationsData || [])
       setResumes(resumesData || [])
+      setInterviews(interviewsData || [])
     } catch (error) {
       setError(error.message || 'Failed to load dashboard')
     } finally {
       setLoading(false)
     }
   }
-
+  
   useEffect(() => {
     if (!userId) {
       navigate('/login')
@@ -80,7 +86,7 @@ function CandidateDashboard() {
 
     loadDashboard()
   }, [])
-
+  
   // ==================== JOB HELPERS ====================
 
   const getApplicationForJob = (jobId) => {
@@ -1089,7 +1095,173 @@ function CandidateDashboard() {
         </section>
 
       </main>
+{/* ==================== INTERVIEWS ==================== */}
 
+<section className="mt-12">
+
+  <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+
+    <div>
+      <p className="text-sm font-medium text-blue-400">
+        Interview Management
+      </p>
+
+      <h2 className="mt-1 text-2xl font-bold">
+        My Interviews
+      </h2>
+
+      <p className="mt-1 text-sm text-slate-400">
+        View your scheduled interviews and meeting details.
+      </p>
+    </div>
+
+    <button
+      onClick={loadDashboard}
+      className="text-sm font-medium text-slate-400 transition hover:text-white"
+    >
+      ↻ Refresh
+    </button>
+
+  </div>
+
+  <div className="mt-6">
+
+    {interviews.length === 0 ? (
+
+      <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-900/50 p-10 text-center">
+
+        <div className="text-4xl">
+          📅
+        </div>
+
+        <h3 className="mt-4 font-semibold">
+          No interviews scheduled
+        </h3>
+
+        <p className="mt-2 text-sm text-slate-400">
+          Your scheduled interviews will appear here.
+        </p>
+
+      </div>
+
+    ) : (
+
+      <div className="grid gap-5">
+
+        {interviews.map((interview) => {
+
+          const statusStyles =
+            interview.status === 'SCHEDULED'
+              ? 'border-blue-500/20 bg-blue-500/10 text-blue-400'
+              : interview.status === 'COMPLETED'
+                ? 'border-green-500/20 bg-green-500/10 text-green-400'
+                : 'border-red-500/20 bg-red-500/10 text-red-400'
+
+          return (
+
+            <div
+              key={interview.id}
+              className="rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-lg"
+            >
+
+              <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+
+                <div className="flex gap-4">
+
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-xl">
+                    📅
+                  </div>
+
+                  <div>
+
+                    <div className="flex flex-wrap items-center gap-3">
+
+                      <h3 className="text-xl font-semibold">
+                        Interview
+                      </h3>
+
+                      <span
+                        className={`rounded-full border px-3 py-1 text-xs font-medium ${statusStyles}`}
+                      >
+                        {interview.status}
+                      </span>
+
+                    </div>
+
+                    <div className="mt-4 space-y-2 text-sm">
+
+                      <p className="text-slate-300">
+                        🕐 Date & Time:{' '}
+                        <span className="text-slate-400">
+                          {new Date(
+                            interview.scheduledAt
+                          ).toLocaleString()}
+                        </span>
+                      </p>
+
+                      <p className="text-slate-300">
+                        📋 Application ID:{' '}
+                        <span className="text-slate-400">
+                          {interview.applicationId}
+                        </span>
+                      </p>
+
+                      {interview.meetingLink && (
+                        <p>
+                          🔗{' '}
+
+                          <a
+                            href={interview.meetingLink}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="font-medium text-blue-400 hover:text-blue-300"
+                          >
+                            Join Interview
+                          </a>
+                        </p>
+                      )}
+
+                      {interview.notes && (
+                        <p className="text-slate-300">
+                          📝 Notes:{' '}
+                          <span className="text-slate-400">
+                            {interview.notes}
+                          </span>
+                        </p>
+                      )}
+
+                    </div>
+
+                  </div>
+
+                </div>
+
+                {interview.status === 'SCHEDULED' &&
+                  interview.meetingLink && (
+                    <a
+                      href={interview.meetingLink}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-5 py-3 text-sm font-medium text-white transition hover:bg-blue-500"
+                    >
+                      Join Meeting →
+                    </a>
+                  )}
+
+              </div>
+
+            </div>
+
+          )
+        })}
+
+      </div>
+
+    )}
+
+  </div>
+
+</section>
       {/* ================= FOOTER ================= */}
 
       <footer className="mt-16 border-t border-slate-800">
