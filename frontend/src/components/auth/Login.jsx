@@ -1,16 +1,51 @@
-import { Link } from 'react-router-dom'
+import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import Button from '../Button'
+import { loginUser } from '../../services/api'
 
 function Login() {
-  const handleSubmit = (event) => {
+  const navigate = useNavigate()
+
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const handleSubmit = async (event) => {
     event.preventDefault()
 
-    // Backend authentication will be connected here later.
+    setError('')
+    setLoading(true)
+
+    try {
+      const data = await loginUser(email, password)
+
+      localStorage.setItem('token', data.token)
+      localStorage.setItem('userId', data.userId)
+      localStorage.setItem('name', data.name)
+      localStorage.setItem('email', data.email)
+      localStorage.setItem('role', data.role)
+
+      if (data.role === 'CANDIDATE') {
+        navigate('/candidate')
+      } else if (data.role === 'RECRUITER') {
+        navigate('/recruiter')
+      } else {
+        navigate('/')
+      }
+
+    } catch (error) {
+      setError(error.message)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4 py-12">
       <div className="w-full max-w-md">
+
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-bold tracking-tight text-white">
             Welcome back
@@ -25,59 +60,60 @@ function Login() {
           onSubmit={handleSubmit}
           className="rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-xl sm:p-8"
         >
+
+          {error && (
+            <div className="mb-5 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+              {error}
+            </div>
+          )}
+
           <div>
-            <label
-              htmlFor="login-email"
-              className="mb-2 block text-sm font-medium text-slate-300"
-            >
+            <label className="mb-2 block text-sm font-medium text-slate-300">
               Email
             </label>
 
             <input
-              id="login-email"
-              name="email"
               type="email"
-              autoComplete="email"
               placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition placeholder:text-slate-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-blue-500"
             />
           </div>
 
           <div className="mt-5">
-            <label
-              htmlFor="login-password"
-              className="mb-2 block text-sm font-medium text-slate-300"
-            >
+            <label className="mb-2 block text-sm font-medium text-slate-300">
               Password
             </label>
 
             <input
-              id="login-password"
-              name="password"
               type="password"
-              autoComplete="current-password"
               placeholder="Enter your password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               required
-              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition placeholder:text-slate-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-blue-500"
             />
           </div>
 
           <div className="mt-6">
             <Button type="submit">
-              Login
+              {loading ? 'Logging in...' : 'Login'}
             </Button>
           </div>
 
           <p className="mt-6 text-center text-sm text-slate-400">
             Don't have an account?{' '}
+
             <Link
               to="/register"
-              className="font-medium text-blue-400 transition hover:text-blue-300"
+              className="font-medium text-blue-400"
             >
               Create account
             </Link>
           </p>
+
         </form>
       </div>
     </div>
