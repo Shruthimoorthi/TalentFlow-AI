@@ -1,16 +1,53 @@
-import { Link } from 'react-router-dom'
+import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import Button from '../Button'
+import { registerUser } from '../../services/api'
 
 function Register() {
-  const handleSubmit = (event) => {
+  const navigate = useNavigate()
+
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [role, setRole] = useState('candidate')
+
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const handleSubmit = async (event) => {
     event.preventDefault()
 
-    // Backend registration will be connected here later.
+    setError('')
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match')
+      return
+    }
+
+    setLoading(true)
+
+    try {
+      await registerUser(
+        name,
+        email,
+        password,
+        role
+      )
+
+      navigate('/login')
+
+    } catch (error) {
+      setError(error.message)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4 py-12">
       <div className="w-full max-w-md">
+
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-bold tracking-tight text-white">
             Create your account
@@ -25,81 +62,72 @@ function Register() {
           onSubmit={handleSubmit}
           className="rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-xl sm:p-8"
         >
+
+          {error && (
+            <div className="mb-5 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+              {error}
+            </div>
+          )}
+
           <div>
-            <label
-              htmlFor="register-name"
-              className="mb-2 block text-sm font-medium text-slate-300"
-            >
+            <label className="mb-2 block text-sm font-medium text-slate-300">
               Full Name
             </label>
 
             <input
-              id="register-name"
-              name="name"
               type="text"
-              autoComplete="name"
               placeholder="Enter your full name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
               required
-              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition placeholder:text-slate-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-blue-500"
             />
           </div>
 
           <div className="mt-5">
-            <label
-              htmlFor="register-email"
-              className="mb-2 block text-sm font-medium text-slate-300"
-            >
+            <label className="mb-2 block text-sm font-medium text-slate-300">
               Email
             </label>
 
             <input
-              id="register-email"
-              name="email"
               type="email"
-              autoComplete="email"
               placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition placeholder:text-slate-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-blue-500"
             />
           </div>
 
           <div className="mt-5">
-            <label
-              htmlFor="register-password"
-              className="mb-2 block text-sm font-medium text-slate-300"
-            >
+            <label className="mb-2 block text-sm font-medium text-slate-300">
               Password
             </label>
 
             <input
-              id="register-password"
-              name="password"
               type="password"
-              autoComplete="new-password"
               placeholder="Create a password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               required
               minLength={8}
-              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition placeholder:text-slate-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-blue-500"
             />
           </div>
 
           <div className="mt-5">
-            <label
-              htmlFor="confirm-password"
-              className="mb-2 block text-sm font-medium text-slate-300"
-            >
+            <label className="mb-2 block text-sm font-medium text-slate-300">
               Confirm Password
             </label>
 
             <input
-              id="confirm-password"
-              name="confirmPassword"
               type="password"
-              autoComplete="new-password"
               placeholder="Confirm your password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
               required
               minLength={8}
-              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition placeholder:text-slate-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-blue-500"
             />
           </div>
 
@@ -109,13 +137,15 @@ function Register() {
             </legend>
 
             <div className="grid grid-cols-2 gap-3">
-              <label className="cursor-pointer rounded-lg border border-slate-700 bg-slate-950 p-4 transition hover:border-blue-500">
+
+              <label className="cursor-pointer rounded-lg border border-slate-700 bg-slate-950 p-4">
                 <input
                   type="radio"
                   name="role"
                   value="candidate"
-                  required
-                  className="mr-2 accent-blue-600"
+                  checked={role === 'candidate'}
+                  onChange={(e) => setRole(e.target.value)}
+                  className="mr-2"
                 />
 
                 <span className="text-sm text-slate-300">
@@ -123,36 +153,41 @@ function Register() {
                 </span>
               </label>
 
-              <label className="cursor-pointer rounded-lg border border-slate-700 bg-slate-950 p-4 transition hover:border-blue-500">
+              <label className="cursor-pointer rounded-lg border border-slate-700 bg-slate-950 p-4">
                 <input
                   type="radio"
                   name="role"
                   value="recruiter"
-                  className="mr-2 accent-blue-600"
+                  checked={role === 'recruiter'}
+                  onChange={(e) => setRole(e.target.value)}
+                  className="mr-2"
                 />
 
                 <span className="text-sm text-slate-300">
                   Recruiter
                 </span>
               </label>
+
             </div>
           </fieldset>
 
           <div className="mt-6">
             <Button type="submit">
-              Create Account
+              {loading ? 'Creating account...' : 'Create Account'}
             </Button>
           </div>
 
           <p className="mt-6 text-center text-sm text-slate-400">
             Already have an account?{' '}
+
             <Link
               to="/login"
-              className="font-medium text-blue-400 transition hover:text-blue-300"
+              className="font-medium text-blue-400"
             >
               Login
             </Link>
           </p>
+
         </form>
       </div>
     </div>
