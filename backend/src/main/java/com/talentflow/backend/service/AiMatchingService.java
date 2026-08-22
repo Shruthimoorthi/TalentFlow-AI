@@ -1,55 +1,96 @@
 package com.talentflow.backend.service;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.springframework.stereotype.Service;
 
-import java.util.HashMap;
-import java.util.Map;
+import com.talentflow.backend.model.Job;
+import com.talentflow.backend.model.Resume;
 
 @Service
 public class AiMatchingService {
 
-    public Map<String, Object> analyzeResume(
-            String resumeId) {
+        private final ResumeService resumeService;
+        private final JobService jobService;
 
-        Map<String, Object> response = new HashMap<>();
+        public AiMatchingService(
+                        ResumeService resumeService,
+                        JobService jobService) {
 
-        response.put(
-                "resumeId",
-                resumeId);
+                this.resumeService = resumeService;
+                this.jobService = jobService;
+        }
 
-        response.put(
-                "status",
-                "PENDING");
+        public Map<String, Object> analyzeResume(String resumeId) {
 
-        response.put(
-                "message",
-                "Resume analysis service is ready for AI integration.");
+                Resume resume = resumeService.getResumeById(resumeId);
 
-        return response;
-    }
+                Map<String, Object> response = new HashMap<>();
 
-    public Map<String, Object> matchResumeToJob(
-            String resumeId,
-            String jobId) {
+                response.put("resumeId", resume.getId());
+                response.put("summary", resume.getSummary());
+                response.put(
+                                "skills",
+                                resume.getSkills() != null
+                                                ? resume.getSkills()
+                                                : List.of());
+                response.put("status", "COMPLETED");
 
-        Map<String, Object> response = new HashMap<>();
+                return response;
+        }
 
-        response.put(
-                "resumeId",
-                resumeId);
+        public Map<String, Object> matchResumeToJob(
+                        String resumeId,
+                        String jobId) {
 
-        response.put(
-                "jobId",
-                jobId);
+                Resume resume = resumeService.getResumeById(resumeId);
 
-        response.put(
-                "status",
-                "PENDING");
+                Job job = jobService.getJobById(jobId);
 
-        response.put(
-                "message",
-                "AI matching service is ready for integration.");
+                List<String> resumeSkills = resume.getSkills() != null
+                                ? resume.getSkills()
+                                : List.of();
 
-        return response;
-    }
+                String jobText = ((job.getTitle() != null
+                                ? job.getTitle()
+                                : "")
+                                + " "
+                                + (job.getDescription() != null
+                                                ? job.getDescription()
+                                                : ""))
+                                .toLowerCase();
+
+                int matchedCount = 0;
+
+                for (String skill : resumeSkills) {
+
+                        if (skill != null
+                                        && !skill.isBlank()
+                                        && jobText.contains(
+                                                        skill.toLowerCase())) {
+
+                                matchedCount++;
+                        }
+                }
+
+                double matchScore = 0;
+
+                if (!resumeSkills.isEmpty()) {
+                        matchScore = (matchedCount * 100.0)
+                                        / resumeSkills.size();
+                }
+
+                Map<String, Object> response = new HashMap<>();
+
+                response.put("resumeId", resumeId);
+                response.put("jobId", jobId);
+                response.put("summary", resume.getSummary());
+                response.put("skills", resumeSkills);
+                response.put("matchScore", matchScore);
+                response.put("status", "COMPLETED");
+
+                return response;
+        }
 }
