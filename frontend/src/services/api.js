@@ -308,9 +308,25 @@ export async function deleteInterview(interviewId) {
     method: 'DELETE',
   })
 }
-// ==================== INTERVIEWS ====================
+ // ==================== ATS / AI MATCHING ====================
 
+export async function analyzeResume(resumeId) {
+  return request(`/ai/analyze-resume/${resumeId}`, {
+    method: 'POST',
+  })
+}
 
+export async function matchResumeToJob(
+  resumeId,
+  jobId
+) {
+  return request(
+    `/ai/match-resume/${resumeId}/${jobId}`,
+    {
+      method: 'POST',
+    }
+  )
+}
 
 
 // ==================== LOGOUT ====================

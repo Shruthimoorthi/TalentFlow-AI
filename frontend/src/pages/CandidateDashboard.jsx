@@ -12,6 +12,8 @@ import {
   deleteResume,
   uploadResumeFile,
   getInterviewsByCandidate,
+  analyzeResume,
+  matchResumeToJob,
   logout,
 } from '../services/api'
 
@@ -51,7 +53,18 @@ function CandidateDashboard() {
 
   const [interviews, setInterviews] = useState([])
   // ==================== LOAD DASHBOARD ====================
+  const [analyzingResumeId, setAnalyzingResumeId] =
+  useState(null)
+  const [matchingResumeId, setMatchingResumeId] =
+  useState(null)
 
+const [selectedJobForMatch, setSelectedJobForMatch] =
+  useState({})
+
+const [jobMatchResults, setJobMatchResults] =
+  useState({})
+const [analysisResults, setAnalysisResults] =
+  useState({})
   const loadDashboard = async () => {
     try {
       setLoading(true)
@@ -343,6 +356,59 @@ function CandidateDashboard() {
         )
     )
   }, [jobs, search])
+  const handleAnalyzeResume = async (resume) => {
+  try {
+    setAnalyzingResumeId(resume.id)
+    setError('')
+
+    const result =
+      await analyzeResume(resume.id)
+
+    setAnalysisResults((previous) => ({
+      ...previous,
+      [resume.id]: result,
+    }))
+  } catch (error) {
+    setError(
+      error.message ||
+      'Failed to analyze resume'
+    )
+  } finally {
+    setAnalyzingResumeId(null)
+  }
+}
+const handleMatchResumeToJob = async (
+  resume,
+  jobId
+) => {
+  if (!jobId) {
+    setError('Please select a job')
+    return
+  }
+
+  try {
+    setMatchingResumeId(resume.id)
+    setError('')
+
+    const result =
+      await matchResumeToJob(
+        resume.id,
+        jobId
+      )
+
+    setJobMatchResults((previous) => ({
+      ...previous,
+      [resume.id]: result,
+    }))
+  } catch (error) {
+    setError(
+      error.message ||
+      'Failed to match resume to job'
+    )
+  } finally {
+    setMatchingResumeId(null)
+  }
+}
 
   // ==================== STATUS STYLES ====================
 
@@ -774,6 +840,203 @@ function CandidateDashboard() {
                             </button>
 
                           )}
+<button type="button"
+  onClick={() =>
+    handleAnalyzeResume(resume)
+  }
+  disabled={
+    analyzingResumeId === resume.id
+  }
+  className="mt-4 ml-3 inline-flex items-center rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+>
+  {analyzingResumeId === resume.id
+    ? 'Analyzing...'
+    : 'Analyze Resume'}
+</button>
+<div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+
+  <select
+    value={
+      selectedJobForMatch[resume.id] || ''
+    }
+    onChange={(event) =>
+      setSelectedJobForMatch((previous) => ({
+        ...previous,
+        [resume.id]: event.target.value,
+      }))
+    }
+    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-2.5 text-sm text-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 sm:max-w-md"
+  >
+    <option value="">
+      Select a job to match
+    </option>
+
+    {jobs.map((job) => (
+      <option
+        key={job.id}
+        value={job.id}
+      >
+        {job.title}
+      </option>
+    ))}
+  </select>
+
+  <button
+    type="button"
+    onClick={() =>
+      handleMatchResumeToJob(
+        resume,
+        selectedJobForMatch[resume.id]
+      )
+    }
+    disabled={
+      matchingResumeId === resume.id ||
+      !selectedJobForMatch[resume.id]
+    }
+    className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
+  >
+    {matchingResumeId === resume.id
+      ? 'Matching...'
+      : 'Match with Job'}
+  </button>
+
+</div>
+{analysisResults[resume.id] && (
+
+  <div className="mt-5 rounded-2xl border border-slate-800 bg-slate-950 p-5">
+
+    <div className="flex items-center justify-between">
+
+      <div>
+        <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+          ATS Analysis
+        </p>
+
+        <p className="mt-1 text-sm font-semibold">
+          Resume Analysis Complete
+        </p>
+      </div>
+
+      <div className="rounded-full bg-blue-500/10 px-4 py-2 text-lg font-bold text-blue-400">
+        {Math.round(
+          analysisResults[resume.id]?.matchScore || 0
+        )}%
+      </div>
+
+    </div>
+
+    {analysisResults[resume.id]?.summary && (
+
+      <div className="mt-4">
+
+        <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+          Summary
+        </p>
+
+        <p className="mt-1 text-sm leading-6 text-slate-400">
+          {analysisResults[resume.id].summary}
+        </p>
+
+      </div>
+
+    )}
+
+    {analysisResults[resume.id]?.skills?.length > 0 && (
+
+      <div className="mt-4">
+
+        <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+          Detected Skills
+        </p>
+
+        <div className="flex flex-wrap gap-2">
+
+          {analysisResults[resume.id].skills.map(
+            (skill, index) => (
+
+              <span
+                key={`${skill}-${index}`}
+                className="rounded-lg bg-slate-800 px-3 py-1.5 text-xs text-slate-300"
+              >
+                {skill}
+              </span>
+
+            )
+          )}
+
+        </div>
+
+      </div>
+
+    )}
+
+  </div>
+
+)}
+{jobMatchResults[resume.id] && (
+  <div className="mt-5 rounded-2xl border border-emerald-500/20 bg-slate-950 p-5">
+
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+
+      <div>
+        <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+          Job Match
+        </p>
+
+        <p className="mt-1 font-semibold">
+          ATS Match Score
+        </p>
+      </div>
+
+      <div className="text-3xl font-bold text-emerald-400">
+        {Math.round(
+          jobMatchResults[resume.id]?.matchScore || 0
+        )}%
+      </div>
+
+    </div>
+
+    {jobMatchResults[resume.id]?.summary && (
+      <div className="mt-4">
+
+        <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+          Resume Summary
+        </p>
+
+        <p className="mt-1 text-sm leading-6 text-slate-400">
+          {jobMatchResults[resume.id].summary}
+        </p>
+
+      </div>
+    )}
+
+    {jobMatchResults[resume.id]?.skills?.length > 0 && (
+      <div className="mt-4">
+
+        <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+          Skills Considered
+        </p>
+
+        <div className="flex flex-wrap gap-2">
+
+          {jobMatchResults[resume.id].skills.map(
+            (skill, index) => (
+              <span
+                key={`${skill}-${index}`}
+                className="rounded-lg bg-slate-800 px-3 py-1.5 text-xs text-slate-300"
+              >
+                {skill}
+              </span>
+            )
+          )}
+
+        </div>
+
+      </div>
+    )}
+
+  </div>
+)}
 
                         </div>
 
