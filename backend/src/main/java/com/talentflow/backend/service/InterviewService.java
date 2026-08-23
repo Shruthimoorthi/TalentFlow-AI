@@ -4,26 +4,68 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 
+import com.talentflow.backend.model.Application;
 import com.talentflow.backend.model.Interview;
+import com.talentflow.backend.model.Job;
+import com.talentflow.backend.model.User;
 import com.talentflow.backend.repository.InterviewRepository;
 
 @Service
 public class InterviewService {
 
     private final InterviewRepository interviewRepository;
+    private final EmailService emailService;
+    private final UserService userService;
+    private final JobService jobService;
+    private final ApplicationService applicationService;
 
-    public InterviewService(InterviewRepository interviewRepository) {
+    public InterviewService(
+            InterviewRepository interviewRepository,
+            EmailService emailService,
+            UserService userService,
+            JobService jobService,
+            ApplicationService applicationService) {
+
         this.interviewRepository = interviewRepository;
+        this.emailService = emailService;
+        this.userService = userService;
+        this.jobService = jobService;
+        this.applicationService = applicationService;
     }
 
     public Interview createInterview(Interview interview) {
 
         if (interview.getStatus() == null ||
                 interview.getStatus().isBlank()) {
+
             interview.setStatus("SCHEDULED");
         }
 
-        return interviewRepository.save(interview);
+        // Save interview first
+        Interview savedInterview = interviewRepository.save(interview);
+
+        // Get candidate
+        User candidate = userService.getUserById(
+                interview.getCandidateId())
+                .orElseThrow(() -> new RuntimeException(
+                        "Candidate not found with id: "
+                                + interview.getCandidateId()));
+
+        // Get job through application
+        Application application = applicationService.getApplicationById(
+                interview.getApplicationId());
+
+        Job job = jobService.getJobById(
+                application.getJobId());
+
+        // Send email after successful save
+        emailService.sendInterviewNotification(
+                candidate.getEmail(),
+                job.getTitle(),
+                interview.getScheduledAt().toString(),
+                interview.getMeetingLink());
+
+        return savedInterview;
     }
 
     public List<Interview> getAllInterviews() {

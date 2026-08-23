@@ -397,9 +397,12 @@ const handleMatchResumeToJob = async (
       )
 
     setJobMatchResults((previous) => ({
-      ...previous,
-      [resume.id]: result,
-    }))
+  ...previous,
+  [resume.id]: {
+    ...(previous[resume.id] || {}),
+    [jobId]: result,
+  },
+}))
   } catch (error) {
     setError(
       error.message ||
@@ -973,71 +976,210 @@ const handleMatchResumeToJob = async (
   </div>
 
 )}
-{jobMatchResults[resume.id] && (
-  <div className="mt-5 rounded-2xl border border-emerald-500/20 bg-slate-950 p-5">
 
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+{jobMatchResults[resume.id] &&
+  Object.entries(jobMatchResults[resume.id]).map(
+    ([jobId, result]) => (
+      <div
+        key={jobId}
+        className="mt-5 rounded-2xl border border-emerald-500/20 bg-slate-950 p-5"
+      >
 
-      <div>
-        <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-          Job Match
-        </p>
+        {/* ================= JOB MATCH HEADER ================= */}
 
-        <p className="mt-1 font-semibold">
-          ATS Match Score
-        </p>
-      </div>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 
-      <div className="text-3xl font-bold text-emerald-400">
-        {Math.round(
-          jobMatchResults[resume.id]?.matchScore || 0
-        )}%
-      </div>
+          <div>
 
-    </div>
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+              AI Job Match
+            </p>
 
-    {jobMatchResults[resume.id]?.summary && (
-      <div className="mt-4">
+            <p className="mt-1 text-sm font-semibold">
+              Resume vs Job Analysis
+            </p>
 
-        <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-          Resume Summary
-        </p>
+            {result.jobTitle && (
+              <p className="mt-1 text-xs text-slate-500">
+                {result.jobTitle}
+              </p>
+            )}
 
-        <p className="mt-1 text-sm leading-6 text-slate-400">
-          {jobMatchResults[resume.id].summary}
-        </p>
+          </div>
 
-      </div>
-    )}
-
-    {jobMatchResults[resume.id]?.skills?.length > 0 && (
-      <div className="mt-4">
-
-        <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
-          Skills Considered
-        </p>
-
-        <div className="flex flex-wrap gap-2">
-
-          {jobMatchResults[resume.id].skills.map(
-            (skill, index) => (
-              <span
-                key={`${skill}-${index}`}
-                className="rounded-lg bg-slate-800 px-3 py-1.5 text-xs text-slate-300"
-              >
-                {skill}
-              </span>
-            )
-          )}
+          <div className="rounded-full bg-emerald-500/10 px-5 py-2 text-xl font-bold text-emerald-400">
+            {Math.round(result.matchScore || 0)}%
+          </div>
 
         </div>
 
+        {/* ================= MATCHED SKILLS ================= */}
+
+        {result.matchedSkills?.length > 0 && (
+
+          <div className="mt-6">
+
+            <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+              Matched Skills
+            </p>
+
+            <div className="flex flex-wrap gap-2">
+
+              {result.matchedSkills.map(
+                (skill, index) => (
+
+                  <span
+                    key={`${skill}-${index}`}
+                    className="rounded-lg bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-400"
+                  >
+                    {skill}
+                  </span>
+
+                )
+              )}
+
+            </div>
+
+          </div>
+
+        )}
+
+        {/* ================= MISSING SKILLS ================= */}
+
+        {result.missingSkills?.length > 0 && (
+
+          <div className="mt-6">
+
+            <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+              Missing Skills
+            </p>
+
+            <div className="flex flex-wrap gap-2">
+
+              {result.missingSkills.map(
+                (skill, index) => (
+
+                  <span
+                    key={`${skill}-${index}`}
+                    className="rounded-lg bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-400"
+                  >
+                    {skill}
+                  </span>
+
+                )
+              )}
+
+            </div>
+
+          </div>
+
+        )}
+
+        {/* ================= MATCHING STRENGTHS ================= */}
+
+        {result.matchingStrengths?.length > 0 && (
+
+          <div className="mt-6">
+
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+              Matching Strengths
+            </p>
+
+            <div className="mt-3 space-y-2">
+
+              {result.matchingStrengths.map(
+                (strength, index) => (
+
+                  <div
+                    key={index}
+                    className="rounded-xl border border-slate-800 bg-slate-900 px-4 py-3"
+                  >
+                    <p className="text-sm leading-6 text-slate-300">
+                      {strength}
+                    </p>
+                  </div>
+
+                )
+              )}
+
+            </div>
+
+          </div>
+
+        )}
+
+        {/* ================= GAPS ================= */}
+
+        {result.gaps?.length > 0 && (
+
+          <div className="mt-6">
+
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+              Skill & Experience Gaps
+            </p>
+
+            <div className="mt-3 space-y-2">
+
+              {result.gaps.map(
+                (gap, index) => (
+
+                  <div
+                    key={index}
+                    className="rounded-xl border border-slate-800 bg-slate-900 px-4 py-3"
+                  >
+                    <p className="text-sm leading-6 text-slate-300">
+                      {gap}
+                    </p>
+                  </div>
+
+                )
+              )}
+
+            </div>
+
+          </div>
+
+        )}
+
+        {/* ================= EXPLANATION ================= */}
+
+        {result.explanation && (
+
+          <div className="mt-6">
+
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+              AI Analysis
+            </p>
+
+            <p className="mt-1 text-sm leading-6 text-slate-400">
+              {result.explanation}
+            </p>
+
+          </div>
+
+        )}
+
+        {/* ================= RECOMMENDATION ================= */}
+
+        {result.recommendation && (
+
+          <div className="mt-6 rounded-xl border border-blue-500/20 bg-blue-500/5 p-4">
+
+            <p className="text-xs font-medium uppercase tracking-wide text-blue-400">
+              Recommendation
+            </p>
+
+            <p className="mt-2 text-sm leading-6 text-slate-300">
+              {result.recommendation}
+            </p>
+
+          </div>
+
+        )}
+
       </div>
-    )}
-
-  </div>
-)}
-
+    )
+  )}
                         </div>
 
                       </div>

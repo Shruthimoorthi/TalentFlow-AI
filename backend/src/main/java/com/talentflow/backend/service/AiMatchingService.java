@@ -1,7 +1,6 @@
 package com.talentflow.backend.service;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import org.springframework.stereotype.Service;
@@ -14,32 +13,46 @@ public class AiMatchingService {
 
         private final ResumeService resumeService;
         private final JobService jobService;
+        private final ResumeTextExtractionService resumeTextExtractionService;
+        private final GeminiAiService geminiAiService;
 
         public AiMatchingService(
                         ResumeService resumeService,
-                        JobService jobService) {
+                        JobService jobService,
+                        ResumeTextExtractionService resumeTextExtractionService,
+                        GeminiAiService geminiAiService) {
 
                 this.resumeService = resumeService;
                 this.jobService = jobService;
+                this.resumeTextExtractionService = resumeTextExtractionService;
+                this.geminiAiService = geminiAiService;
         }
 
-        public Map<String, Object> analyzeResume(String resumeId) {
+        // ==================== AI RESUME ANALYSIS ====================
+
+        public Map<String, Object> analyzeResume(
+                        String resumeId) {
 
                 Resume resume = resumeService.getResumeById(resumeId);
 
+                String resumeText = resumeTextExtractionService.extractText(resume);
+
+                Map<String, Object> aiResult = geminiAiService.analyzeResume(resumeText);
+
                 Map<String, Object> response = new HashMap<>();
 
-                response.put("resumeId", resume.getId());
-                response.put("summary", resume.getSummary());
+                response.putAll(aiResult);
+
+                response.put("resumeId", resumeId);
                 response.put(
-                                "skills",
-                                resume.getSkills() != null
-                                                ? resume.getSkills()
-                                                : List.of());
+                                "matchScore",
+                                calculateAtsScore(aiResult));
                 response.put("status", "COMPLETED");
 
                 return response;
         }
+
+        // ==================== AI JOB MATCHING ====================
 
         public Map<String, Object> matchResumeToJob(
                         String resumeId,
@@ -49,48 +62,67 @@ public class AiMatchingService {
 
                 Job job = jobService.getJobById(jobId);
 
-                List<String> resumeSkills = resume.getSkills() != null
-                                ? resume.getSkills()
-                                : List.of();
+                String resumeText = resumeTextExtractionService.extractText(resume);
 
-                String jobText = ((job.getTitle() != null
-                                ? job.getTitle()
-                                : "")
-                                + " "
-                                + (job.getDescription() != null
-                                                ? job.getDescription()
-                                                : ""))
-                                .toLowerCase();
-
-                int matchedCount = 0;
-
-                for (String skill : resumeSkills) {
-
-                        if (skill != null
-                                        && !skill.isBlank()
-                                        && jobText.contains(
-                                                        skill.toLowerCase())) {
-
-                                matchedCount++;
-                        }
-                }
-
-                double matchScore = 0;
-
-                if (!resumeSkills.isEmpty()) {
-                        matchScore = (matchedCount * 100.0)
-                                        / resumeSkills.size();
-                }
+                Map<String, Object> aiResult = geminiAiService.matchResumeToJob(
+                                resumeText,
+                                job.getTitle(),
+                                job.getDescription());
 
                 Map<String, Object> response = new HashMap<>();
 
                 response.put("resumeId", resumeId);
                 response.put("jobId", jobId);
-                response.put("summary", resume.getSummary());
-                response.put("skills", resumeSkills);
-                response.put("matchScore", matchScore);
+                response.put("jobTitle", job.getTitle());
+
+                response.putAll(aiResult);
+
                 response.put("status", "COMPLETED");
 
                 return response;
         }
+
+        // ==================== ATS SCORE ====================
+
+        private double calculateAtsScore(
+                        Map<String, Object> aiResult) {
+
+                double skillsScore = getScore(aiResult, "skillsScore");
+
+                double experienceScore = getScore(aiResult, "experienceScore");
+
+                double projectsScore = getScore(aiResult, "projectsScore");
+
+                double completenessScore = getScore(aiResult, "completenessScore");
+
+                double atsReadinessScore = getScore(aiResult, "atsReadinessScore");
+
+                double finalScore = (skillsScore * 0.30)
+                                + (experienceScore * 0.20)
+                                + (projectsScore * 0.20)
+                                + (completenessScore * 0.15)
+                                + (atsReadinessScore * 0.15);
+
+                return Math.round(
+                                Math.max(0, Math.min(100, finalScore)));
+        }
+
+        private double getScore(
+                        Map<String, Object> result,
+                        String key) {
+
+                Object value = result.get(key);
+
+                if (value instanceof Number number) {
+
+                        return Math.max(
+                                        0,
+                                        Math.min(
+                                                        100,
+                                                        number.doubleValue()));
+                }
+
+                return 0;
+        }
+
 }

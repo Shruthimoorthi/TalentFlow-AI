@@ -1,50 +1,85 @@
 package com.talentflow.backend.service;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
 @Service
 public class EmailService {
 
-    private static final Logger logger = LoggerFactory.getLogger(EmailService.class);
+        private final JavaMailSender mailSender;
 
-    public void sendEmail(
-            String to,
-            String subject,
-            String message) {
+        public EmailService(JavaMailSender mailSender) {
+                this.mailSender = mailSender;
+        }
 
-        logger.info(
-                "Email requested: to={}, subject={}",
-                to,
-                subject);
+        public void sendEmail(
+                        String to,
+                        String subject,
+                        String message) {
 
-        logger.info(
-                "Email content: {}",
-                message);
-    }
+                SimpleMailMessage mailMessage = new SimpleMailMessage();
 
-    public void sendApplicationConfirmation(
-            String email,
-            String jobTitle) {
+                mailMessage.setFrom(
+                                System.getenv("MAIL_USERNAME"));
 
-        sendEmail(
-                email,
-                "Application Submitted",
-                "Your application for " +
-                        jobTitle +
-                        " has been submitted successfully.");
-    }
+                mailMessage.setTo(to);
+                mailMessage.setSubject(subject);
+                mailMessage.setText(message);
 
-    public void sendInterviewNotification(
-            String email,
-            String jobTitle) {
+                mailSender.send(mailMessage);
+        }
 
-        sendEmail(
-                email,
-                "Interview Scheduled",
-                "Your interview for " +
-                        jobTitle +
-                        " has been scheduled.");
-    }
+        public void sendApplicationConfirmation(
+                        String email,
+                        String jobTitle) {
+
+                sendEmail(
+                                email,
+                                "TalentFlow - Application Submitted",
+                                """
+                                                Your application has been submitted successfully.
+
+                                                Job: %s
+
+                                                Thank you for applying through TalentFlow.
+
+                                                Regards,
+                                                TalentFlow
+                                                """.formatted(jobTitle));
+        }
+
+        public void sendInterviewNotification(
+                        String email,
+                        String jobTitle,
+                        String scheduledAt,
+                        String meetingLink) {
+
+                String message = """
+                                Hello,
+
+                                Your interview has been scheduled through TalentFlow.
+
+                                Job: %s
+                                Interview Date & Time: %s
+
+                                Meeting Link:
+                                %s
+
+                                Please join a few minutes early.
+
+                                Good luck!
+
+                                Regards,
+                                TalentFlow
+                                """.formatted(
+                                jobTitle,
+                                scheduledAt,
+                                meetingLink);
+
+                sendEmail(
+                                email,
+                                "TalentFlow - Interview Scheduled",
+                                message);
+        }
 }
