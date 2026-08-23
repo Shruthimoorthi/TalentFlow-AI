@@ -6,8 +6,9 @@ import Register from '../components/auth/Register'
 import Navbar from '../components/Navbar'
 import Hero from '../components/Hero'
 import Features from '../components/Features'
+import AiTools from '../components/AiTools'
 import Footer from '../components/Footer'
-
+import HowItWorks from '../components/HowItWorks'
 import CandidateDashboard from '../pages/CandidateDashboard'
 import RecruiterDashboard from '../pages/RecruiterDashboard'
 
@@ -17,6 +18,8 @@ function HomePage() {
       <Navbar />
       <Hero />
       <Features />
+      <HowItWorks />
+      <AiTools />
       <Footer />
     </>
   )
