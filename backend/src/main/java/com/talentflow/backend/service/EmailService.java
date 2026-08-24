@@ -1,34 +1,130 @@
 package com.talentflow.backend.service;
 
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.util.List;
+import java.util.Map;
 
 @Service
 public class EmailService {
 
-        private final JavaMailSender mailSender;
+        private final ObjectMapper objectMapper = new ObjectMapper();
 
-        public EmailService(JavaMailSender mailSender) {
-                this.mailSender = mailSender;
+        private final HttpClient httpClient = HttpClient.newHttpClient();
+
+        @Value("${brevo.api-key}")
+        private String brevoApiKey;
+
+        @Value("${brevo.sender-email}")
+        private String senderEmail;
+
+        @Value("${brevo.sender-name}")
+        private String senderName;
+
+        public EmailService() {
         }
+
+        // ==================== SEND EMAIL ====================
 
         public void sendEmail(
                         String to,
                         String subject,
                         String message) {
 
-                SimpleMailMessage mailMessage = new SimpleMailMessage();
+                if (brevoApiKey == null ||
+                                brevoApiKey.isBlank()) {
 
-                mailMessage.setFrom(
-                                System.getenv("MAIL_USERNAME"));
+                        throw new RuntimeException(
+                                        "BREVO_API_KEY is not configured");
+                }
 
-                mailMessage.setTo(to);
-                mailMessage.setSubject(subject);
-                mailMessage.setText(message);
+                if (senderEmail == null ||
+                                senderEmail.isBlank()) {
 
-                mailSender.send(mailMessage);
+                        throw new RuntimeException(
+                                        "BREVO_SENDER_EMAIL is not configured");
+                }
+
+                if (senderName == null ||
+                                senderName.isBlank()) {
+
+                        senderName = "TalentFlow";
+                }
+
+                try {
+
+                        Map<String, Object> payload = Map.of(
+                                        "sender", Map.of(
+                                                        "name", senderName,
+                                                        "email", senderEmail),
+
+                                        "to", List.of(
+                                                        Map.of(
+                                                                        "email", to)),
+
+                                        "subject", subject,
+
+                                        "textContent", message);
+
+                        String jsonBody = objectMapper.writeValueAsString(payload);
+
+                        HttpRequest request = HttpRequest.newBuilder()
+                                        .uri(
+                                                        URI.create(
+                                                                        "https://api.brevo.com/v3/smtp/email"))
+                                        .header(
+                                                        "accept",
+                                                        "application/json")
+                                        .header(
+                                                        "api-key",
+                                                        brevoApiKey)
+                                        .header(
+                                                        "content-type",
+                                                        "application/json")
+                                        .POST(
+                                                        HttpRequest.BodyPublishers
+                                                                        .ofString(jsonBody))
+                                        .build();
+
+                        HttpResponse<String> response = httpClient.send(
+                                        request,
+                                        HttpResponse.BodyHandlers
+                                                        .ofString());
+
+                        if (response.statusCode() < 200 ||
+                                        response.statusCode() >= 300) {
+
+                                throw new RuntimeException(
+                                                "Brevo email failed. HTTP "
+                                                                + response.statusCode()
+                                                                + ": "
+                                                                + response.body());
+                        }
+
+                } catch (InterruptedException e) {
+
+                        Thread.currentThread().interrupt();
+
+                        throw new RuntimeException(
+                                        "Email sending was interrupted",
+                                        e);
+
+                } catch (IOException e) {
+
+                        throw new RuntimeException(
+                                        "Failed to send email through Brevo",
+                                        e);
+                }
         }
+
+        // ==================== APPLICATION CONFIRMATION ====================
 
         public void sendApplicationConfirmation(
                         String email,
@@ -48,6 +144,8 @@ public class EmailService {
                                                 TalentFlow
                                                 """.formatted(jobTitle));
         }
+
+        // ==================== INTERVIEW NOTIFICATION ====================
 
         public void sendInterviewNotification(
                         String email,
