@@ -46,10 +46,19 @@ public class SecurityConfig {
                                                 SessionCreationPolicy.STATELESS))
 
                                 .authorizeHttpRequests(auth -> auth
-                                                .requestMatchers("/uploads/**").permitAll()
-                                                // Authentication
+
+                                                // Allow CORS preflight requests
                                                 .requestMatchers(
-                                                                "/api/auth/**")
+                                                                org.springframework.http.HttpMethod.OPTIONS,
+                                                                "/**")
+                                                .permitAll()
+
+                                                // Public uploaded files
+                                                .requestMatchers("/uploads/**")
+                                                .permitAll()
+
+                                                // Authentication
+                                                .requestMatchers("/api/auth/**")
                                                 .permitAll()
 
                                                 // Public job browsing
@@ -59,7 +68,8 @@ public class SecurityConfig {
                                                 .permitAll()
 
                                                 // Everything else requires JWT
-                                                .anyRequest().authenticated())
+                                                .anyRequest()
+                                                .authenticated())
 
                                 .addFilterBefore(
                                                 jwtAuthenticationFilter,
@@ -77,7 +87,7 @@ public class SecurityConfig {
                                 List.of(
                                                 "http://localhost:5173",
                                                 "http://127.0.0.1:5173",
-                                                "https://talentflow-frontend-bb3s.onrender.com/"));
+                                                "https://talentflow-frontend-bb3s.onrender.com"));
 
                 configuration.setAllowedMethods(
                                 List.of(
