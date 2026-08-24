@@ -397,34 +397,14 @@ function CandidateDashboard() {
   // =========================================================
   // VIEW RESUME
   // =========================================================
-
-  const handleViewResume = (
-    resume
-  ) => {
-    if (!resume.fileUrl) {
-      setError(
-        'Resume file is not available'
-      )
-
-      return
-    }
-
-    const backendUrl =
-      'http://localhost:8080'
-
-    const resumeUrl =
-      resume.fileUrl.startsWith(
-        'http'
-      )
-        ? resume.fileUrl
-        : `${backendUrl}${resume.fileUrl}`
-
-    window.open(
-      resumeUrl,
-      '_blank',
-      'noopener,noreferrer'
-    )
+const handleViewResume = (resume) => {
+  if (!resume?.fileUrl) {
+    setError('Resume file is not available')
+    return
   }
+
+  window.open(resume.fileUrl, '_blank')
+}
 
   // =========================================================
   // AI RESUME ANALYSIS

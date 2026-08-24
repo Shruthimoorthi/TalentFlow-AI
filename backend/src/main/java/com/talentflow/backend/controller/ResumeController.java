@@ -2,7 +2,11 @@ package com.talentflow.backend.controller;
 
 import java.util.List;
 
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,113 +27,133 @@ import com.talentflow.backend.service.ResumeService;
 @RequestMapping("/api/resumes")
 public class ResumeController {
 
-    private final ResumeService resumeService;
+        private final ResumeService resumeService;
 
-    public ResumeController(ResumeService resumeService) {
-        this.resumeService = resumeService;
-    }
+        public ResumeController(ResumeService resumeService) {
+                this.resumeService = resumeService;
+        }
 
-   
-@PostMapping(
-        consumes = "multipart/form-data",
-        produces = "application/json"
-)
-public ResponseEntity<ResumeResponse> createResume(
+        // ==================== CREATE ====================
 
-        @RequestParam("candidateId")
-        String candidateId,
+        @PostMapping(consumes = "multipart/form-data", produces = "application/json")
+        public ResponseEntity<ResumeResponse> createResume(
 
-        @RequestParam("file")
-        MultipartFile file,
+                        @RequestParam("candidateId") String candidateId,
 
-        @RequestParam(value = "summary", required = false)
-        String summary,
+                        @RequestParam("file") MultipartFile file,
 
-        @RequestParam(value = "skills", required = false)
-        String skills) {
+                        @RequestParam(value = "summary", required = false) String summary,
 
-    Resume savedResume =
-            resumeService.createResume(
-                    candidateId,
-                    file,
-                    summary,
-                    skills
-            );
+                        @RequestParam(value = "skills", required = false) String skills) {
 
-    return ResponseEntity
-            .status(HttpStatus.CREATED)
-            .body(toResponse(savedResume));
-}
-    @GetMapping
-    public ResponseEntity<List<ResumeResponse>> getAllResumes() {
+                Resume savedResume = resumeService.createResume(
+                                candidateId,
+                                file,
+                                summary,
+                                skills);
 
-        List<ResumeResponse> resumes =
-                resumeService.getAllResumes()
-                        .stream()
-                        .map(this::toResponse)
-                        .toList();
+                return ResponseEntity
+                                .status(HttpStatus.CREATED)
+                                .body(toResponse(savedResume));
+        }
 
-        return ResponseEntity.ok(resumes);
-    }
+        // ==================== GET ALL ====================
 
-    @GetMapping("/{id}")
-    public ResponseEntity<ResumeResponse> getResumeById(
-            @PathVariable String id) {
+        @GetMapping
+        public ResponseEntity<List<ResumeResponse>> getAllResumes() {
 
-        return ResponseEntity.ok(
-                toResponse(
-                        resumeService.getResumeById(id)
-                )
-        );
-    }
+                List<ResumeResponse> resumes = resumeService.getAllResumes()
+                                .stream()
+                                .map(this::toResponse)
+                                .toList();
 
-    @GetMapping("/candidate/{candidateId}")
-    public ResponseEntity<List<ResumeResponse>>
-    getResumesByCandidate(
-            @PathVariable String candidateId) {
+                return ResponseEntity.ok(resumes);
+        }
 
-        List<ResumeResponse> resumes =
-                resumeService
-                        .getResumesByCandidate(candidateId)
-                        .stream()
-                        .map(this::toResponse)
-                        .toList();
+        // ==================== VIEW PDF ====================
 
-        return ResponseEntity.ok(resumes);
-    }
+        @GetMapping("/{id}/file")
+        public ResponseEntity<Resource> getResumeFile(
+                        @PathVariable String id) {
 
-    @PutMapping("/{id}")
-    public ResponseEntity<ResumeResponse> updateResume(
-            @PathVariable String id,
-            @RequestBody Resume resume) {
+                Resume resume = resumeService.getResumeById(id);
 
-        Resume updatedResume =
-                resumeService.updateResume(id, resume);
+                byte[] fileBytes = resumeService.downloadResumeFile(resume);
 
-        return ResponseEntity.ok(
-                toResponse(updatedResume)
-        );
-    }
+                ByteArrayResource resource = new ByteArrayResource(fileBytes);
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteResume(
-            @PathVariable String id) {
+                return ResponseEntity.ok()
+                                .contentType(MediaType.APPLICATION_PDF)
+                                .header(
+                                                HttpHeaders.CONTENT_DISPOSITION,
+                                                "inline; filename=\"" +
+                                                                resume.getFileName() +
+                                                                "\"")
+                                .contentLength(fileBytes.length)
+                                .body(resource);
+        }
 
-        resumeService.deleteResume(id);
+        // ==================== GET BY ID ====================
 
-        return ResponseEntity.noContent().build();
-    }
+        @GetMapping("/{id}")
+        public ResponseEntity<ResumeResponse> getResumeById(
+                        @PathVariable String id) {
 
-    private ResumeResponse toResponse(Resume resume) {
+                return ResponseEntity.ok(
+                                toResponse(
+                                                resumeService.getResumeById(id)));
+        }
 
-        return new ResumeResponse(
-                resume.getId(),
-                resume.getCandidateId(),
-                resume.getFileName(),
-                resume.getFileUrl(),
-                resume.getSummary(),
-                resume.getSkills(),
-                resume.getUploadedAt()
-        );
-    }
+        // ==================== GET BY CANDIDATE ====================
+
+        @GetMapping("/candidate/{candidateId}")
+        public ResponseEntity<List<ResumeResponse>> getResumesByCandidate(
+                        @PathVariable String candidateId) {
+
+                List<ResumeResponse> resumes = resumeService
+                                .getResumesByCandidate(candidateId)
+                                .stream()
+                                .map(this::toResponse)
+                                .toList();
+
+                return ResponseEntity.ok(resumes);
+        }
+
+        // ==================== UPDATE ====================
+
+        @PutMapping("/{id}")
+        public ResponseEntity<ResumeResponse> updateResume(
+                        @PathVariable String id,
+                        @RequestBody Resume resume) {
+
+                Resume updatedResume = resumeService.updateResume(id, resume);
+
+                return ResponseEntity.ok(
+                                toResponse(updatedResume));
+        }
+
+        // ==================== DELETE ====================
+
+        @DeleteMapping("/{id}")
+        public ResponseEntity<Void> deleteResume(
+                        @PathVariable String id) {
+
+                resumeService.deleteResume(id);
+
+                return ResponseEntity.noContent().build();
+        }
+
+        // ==================== RESPONSE ====================
+
+        private ResumeResponse toResponse(Resume resume) {
+
+                return new ResumeResponse(
+                                resume.getId(),
+                                resume.getCandidateId(),
+                                resume.getFileName(),
+                                resume.getFileUrl(),
+                                resume.getSummary(),
+                                resume.getSkills(),
+                                resume.getUploadedAt());
+        }
 }

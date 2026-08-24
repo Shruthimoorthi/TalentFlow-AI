@@ -163,8 +163,8 @@ export async function createResume(
     skills || ''
   )
 
-  const response = await fetch(
-    'http://localhost:8080/api/resumes',
+ const response = await fetch(
+  `${API_BASE_URL}/resumes`,
     {
       method: 'POST',
 
@@ -238,8 +238,7 @@ export async function uploadResumeFile(
   )
 
   const response = await fetch(
-    'http://localhost:8080/api/resumes',
-    {
+    `${API_BASE_URL}/resumes`,{
       method: 'POST',
 
       headers: token

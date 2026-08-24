@@ -1,23 +1,30 @@
 package com.talentflow.backend.service;
 
-import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import com.talentflow.backend.model.Resume;
 
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.springframework.stereotype.Service;
 
-import com.talentflow.backend.model.Resume;
+import java.io.IOException;
 
 @Service
 public class ResumeTextExtractionService {
 
+    private final ResumeService resumeService;
+
+    public ResumeTextExtractionService(
+            ResumeService resumeService) {
+
+        this.resumeService = resumeService;
+    }
+
     public String extractText(Resume resume) {
 
         if (resume == null) {
-            throw new RuntimeException("Resume not found");
+            throw new RuntimeException(
+                    "Resume not found");
         }
 
         if (resume.getFileUrl() == null ||
@@ -27,28 +34,41 @@ public class ResumeTextExtractionService {
                     "Resume file is not available");
         }
 
-        String fileName = Paths.get(resume.getFileUrl())
-                .getFileName()
-                .toString();
+        try {
 
-        Path filePath = Paths.get("uploads/resumes")
-                .resolve(fileName);
+            // Get the PDF through the same backend method
+            // used by the PDF viewer.
+            byte[] pdfBytes = resumeService.downloadResumeFile(resume);
 
-        if (!java.nio.file.Files.exists(filePath)) {
-            throw new RuntimeException(
-                    "Resume file does not exist");
-        }
+            if (pdfBytes == null ||
+                    pdfBytes.length == 0) {
 
-        try (PDDocument document = Loader.loadPDF(filePath.toFile())) {
+                throw new IOException(
+                        "Downloaded resume is empty");
+            }
 
-            PDFTextStripper stripper = new PDFTextStripper();
+            try (PDDocument document = Loader.loadPDF(pdfBytes)) {
 
-            return stripper.getText(document).trim();
+                PDFTextStripper stripper = new PDFTextStripper();
+
+                String text = stripper
+                        .getText(document)
+                        .trim();
+
+                if (text.isBlank()) {
+
+                    throw new IOException(
+                            "No readable text found in resume PDF");
+                }
+
+                return text;
+            }
 
         } catch (IOException e) {
 
             throw new RuntimeException(
-                    "Failed to extract text from resume",
+                    "Failed to extract text from resume: " +
+                            e.getMessage(),
                     e);
         }
     }
